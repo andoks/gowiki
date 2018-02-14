@@ -1,7 +1,33 @@
+<!DOCTYPE html>
+<html lange="en">
+<head>
+    <title>{{.Title}}</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+</head>
+
+<div class="jumbotron text-center">
 <h1>Editing {{.Title}}</h1>
+</div>
 
-
-<form action="/save/{{.Title}}" method="POST">
-    <div><textarea name="body" rows="20" cols="80">{{printf "%s" .Body}}</textarea></div>
-    <div><input type="submit" value="Save"/></div>
-</form>
+<div class="container">
+    <ul class="nav nav-tabs">
+        <li class="nav-item">
+            <a class="nav-link" href="/view/{{.Title}}">View</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link active" href="/edit/{{.Title}}">Edit</a>
+        </li>
+    </ul>
+    <form action="/save/{{.Title}}" method="POST">
+        <div class="form-group">
+            <textarea class="form-control" name="body" rows="20" cols="80">{{printf "%s" .Body}}
+            </textarea>
+            <input type="submit" class="btn btn-primary float-right" value="Save"/>
+        </div>
+    </form>
+</div>
+</html>
