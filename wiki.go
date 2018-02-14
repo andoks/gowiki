@@ -3,13 +3,16 @@ package main
 import (
 	"html/template"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"os"
 	"regexp"
 )
 
 var (
 	validPath = regexp.MustCompile("^/(edit|save|view)/([a-zA-Z0-9]+)$")
-	templates = template.Must(template.ParseFiles("edit.html", "view.html"))
+	templates = template.Must(template.ParseFiles("templates/edit.html", "templates/view.html"))
+	dataDir   = "data"
 )
 
 type Page struct {
@@ -18,12 +21,29 @@ type Page struct {
 }
 
 func (p *Page) save() error {
-	filename := p.Title + ".txt"
+	filename := dataDir + "/" + p.Title + ".txt"
+	log.Printf("saving page '%s' as file '%s'", p.Title, filename)
 	return ioutil.WriteFile(filename, p.Body, 0600)
 }
 
+func setup() {
+	// create data directory if it doesn't exist
+	info, err := os.Stat(dataDir)
+	if err != nil {
+		log.Printf("creating data directory '%s'", dataDir)
+		err = os.Mkdir(dataDir, 0700)
+		if err != nil {
+			log.Panicln("unable to create data folder")
+		}
+	} else {
+		if !info.IsDir() {
+			log.Panicf("'%s' path exists, but is not a directory", dataDir)
+		}
+	}
+}
+
 func loadPage(title string) (*Page, error) {
-	filename := title + ".txt"
+	filename := dataDir + "/" + title + ".txt"
 	body, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -46,7 +66,10 @@ func makeHandle(handle func(http.ResponseWriter, *http.Request, string)) http.Ha
 			http.NotFound(w, r)
 		}
 		title := m[2]
-
+		log.Printf("request started for action '%s' on page '%s' from %v received", m[1], title, r.RemoteAddr)
+		defer func() {
+			log.Printf("request finished for action '%s' on page '%s' from %v received", m[1], title, r.RemoteAddr)
+		}()
 		handle(w, r, title)
 	}
 }
@@ -80,6 +103,7 @@ func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
 }
 
 func main() {
+	setup()
 	http.HandleFunc("/view/", makeHandle(viewHandler))
 	http.HandleFunc("/edit/", makeHandle(editHandler))
 	http.HandleFunc("/save/", makeHandle(saveHandler))
