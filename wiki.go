@@ -7,12 +7,15 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"bytes"
+	"bufio"
 )
 
 var (
-	validPath = regexp.MustCompile("^/(edit|save|view)/([a-zA-Z0-9]+)$")
-	templates = template.Must(template.ParseFiles("templates/edit.html", "templates/view.html"))
-	dataDir   = "data"
+	validPath     = regexp.MustCompile("^/(edit|save|view)/([a-zA-Z0-9]+)$")
+	linkPath      = regexp.MustCompile(`\[.+\]`)
+	templates     = template.Must(template.ParseFiles("templates/edit.html", "templates/view.html"))
+	dataDir       = "data"
 )
 
 type Page struct {
@@ -59,6 +62,23 @@ func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
 	}
 }
 
+func renderTemplateWithWikiSyntax(w http.ResponseWriter, tmpl string, p *Page) {
+	buffer := bytes.Buffer{}
+	writer := bufio.NewWriter(&buffer)
+	err := templates.ExecuteTemplate(writer, tmpl+".html", p)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	writer.Flush()
+	s := buffer.String()
+	s = linkPath.ReplaceAllStringFunc(s, func(m string) string {
+		page := m[1 : len(m)-1]
+		return "<a href=\"/view/" + page + "\">" + page + "</a>"
+	})
+
+	w.Write([]byte(s))
+}
+
 func makeHandle(handle func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		m := validPath.FindStringSubmatch(r.URL.Path)
@@ -80,7 +100,7 @@ func viewHandler(w http.ResponseWriter, r *http.Request, title string) {
 		http.Redirect(w, r, "/edit/"+title, http.StatusFound)
 		return
 	}
-	renderTemplate(w, "view", p)
+	renderTemplateWithWikiSyntax(w, "view", p)
 }
 
 func editHandler(w http.ResponseWriter, r *http.Request, title string) {
